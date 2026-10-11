@@ -1,0 +1,25 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Generated output
+output/
+*_events.jsonl
+*_transcript.json
+*_transcript.txt
+*_faces.jsonl
+
+# Large binaries: share through the team drive, not git
+data/videos/*
+!data/videos/.gitkeep
+models/*
+!models/.gitkeep
+
+# Editors / OS (keep the shared launch config)
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+.DS_Store
+Thumbs.db

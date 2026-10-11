@@ -1,0 +1,18 @@
+# Python 3.12 (64-bit). Install with:  pip install -r requirements.txt
+# Pin exact versions so every laptop runs the same code. Bump them together, as a team.
+
+numpy==2.5.4
+scipy==1.18.1
+pyyaml==6.0.3
+
+# Vision. mediapipe depends on opencv-contrib-python and insightface on opencv-python;
+# both install a `cv2` module, so keep the two at the SAME version or imports break.
+opencv-python==5.0.0.93
+opencv-contrib-python==5.0.0.93
+mediapipe==1.1.0
+supervision==0.30.9
+insightface==2.1
+onnxruntime==1.31.0     # inference backend for insightface models
+
+# Dev
+pytest==9.1.1

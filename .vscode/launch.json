@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {"name": "Run on clip", "type": "debugpy", "request": "launch",
+     "program": "${workspaceFolder}/src/main.py",
+     "args": ["--source", "data/videos/two_person_overlap.mp4", "--show"],
+     "cwd": "${workspaceFolder}", "console": "integratedTerminal"},
+    {"name": "Run on webcam", "type": "debugpy", "request": "launch",
+     "program": "${workspaceFolder}/src/main.py",
+     "args": ["--source", "0", "--show"],
+     "cwd": "${workspaceFolder}", "console": "integratedTerminal"}
+  ]
+}

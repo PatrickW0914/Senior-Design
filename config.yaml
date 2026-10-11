@@ -1,0 +1,41 @@
+# Single source of truth for settings. Change values here, not in code.
+# Relative paths are resolved against the repo root.
+
+source: 0                  # camera index or video path; `--source` on the command line overrides
+
+camera:
+  width: 1280
+  height: 720
+  fps: 30
+  hfov_deg: 78.0           # horizontal field of view; measure it for your camera (Task 6)
+  latency_s: 0.0           # capture latency from a clap test; fed to SessionClock
+
+detect:                    # Task 4
+  backend: mediapipe
+  model_path: models/blaze_face_short_range.tflite
+  min_confidence: 0.5
+
+track:                     # Tasks 5, 12
+  max_lost_frames: 30      # frames a track survives without a detection
+  reid:
+    enabled: false
+    model: buffalo_l       # insightface model pack
+    similarity_threshold: 0.45
+
+speaking:                  # Task 8: lip-motion score -> FaceObs.asd_prob
+  model_path: models/face_landmarker.task
+  window_s: 0.5            # lip-motion history used per score
+  on_threshold: 0.6
+  off_threshold: 0.4
+
+fusion:                    # passed to av_event_log.SpeakingFusion once audio is added
+  w_asd: 0.5
+  w_doa: 0.4
+  w_vad: 0.1
+  on_threshold: 0.6
+  off_threshold: 0.4
+  tau_s: 0.25
+
+output:
+  dir: output
+  prefix: session          # writes <dir>/<prefix>_faces.jsonl

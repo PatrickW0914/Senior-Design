@@ -1,0 +1,2 @@
+# Store text files with LF in the repo; each OS checks them out with its native line endings.
+* text=auto

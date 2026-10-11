@@ -5,6 +5,8 @@ source: 0                  # camera index or video path; `--source` on the comma
 
 camera:
   backend: auto            # auto | dshow | msmf (Windows) | avfoundation (macOS) | v4l2 (Linux)
+                           # on Windows auto = msmf; dshow ignores fourcc and gives ~10 fps at 720p
+  fourcc: MJPG             # compressed USB format; needed for 720p at 30 fps. Empty = camera default
   width: 1280
   height: 720
   fps: 30

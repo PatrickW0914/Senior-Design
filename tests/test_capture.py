@@ -48,7 +48,14 @@ def test_missing_file_raises(tmp_path):
 def test_frame_timing_finds_drops():
     ts = [i / 30 for i in range(30)]
     ts = ts[:10] + ts[12:]                    # two frames missing -> one long gap
-    s = frame_timing(ts)
-    assert s.monotonic and s.dropped == 1
+    s = frame_timing(ts, nominal_fps=30)
+    assert s.monotonic and s.long_gaps == 1 and s.missing == 2
     assert s.median_interval_s == pytest.approx(1 / 30)
     assert not frame_timing([0.0, 0.1, 0.1]).monotonic
+
+
+def test_frame_timing_late_frame_is_not_missing():
+    ts = [i / 30 for i in range(30)]
+    ts[10] += 0.6 / 30                        # delivered late, nothing lost
+    s = frame_timing(ts, nominal_fps=30)
+    assert s.long_gaps == 1 and s.missing == 0

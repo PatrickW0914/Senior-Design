@@ -38,6 +38,8 @@ class VideoSource:
         self.clock = clock
         if self.is_camera:
             self.cap = cv2.VideoCapture(source, _BACKENDS[camera_cfg.get("backend", "auto")])
+            if camera_cfg.get("fourcc"):  # before the size: uncompressed YUY2 can't do 720p at 30 fps
+                self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*camera_cfg["fourcc"]))
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_cfg["width"])
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_cfg["height"])
             self.cap.set(cv2.CAP_PROP_FPS, camera_cfg["fps"])
@@ -90,16 +92,23 @@ class FrameTiming:
     median_interval_s: float
     max_gap_s: float
     monotonic: bool            # every t strictly greater than the previous one
-    dropped: int               # gaps longer than drop_factor x the median interval
+    long_gaps: int             # gaps > gap_factor x frame interval: a dropped frame OR one delivered late
+    missing: int | None        # frames that never arrived: span x nominal_fps + 1 - n_frames
 
 
-def frame_timing(ts, drop_factor: float = 1.5) -> FrameTiming:
-    """Summarize a list of frame timestamps: real frame rate, gaps, dropped frames."""
+def frame_timing(ts, nominal_fps: float | None = None, gap_factor: float = 1.5) -> FrameTiming:
+    """Summarize frame timestamps: real frame rate, long gaps, missing frames.
+
+    A late frame makes a long gap followed by a short one, so long_gaps alone overcounts drops;
+    `missing` compares the frame count with what nominal_fps promises over the same span.
+    """
     ts = np.asarray(ts, dtype=float)
     if ts.size < 2:
-        return FrameTiming(int(ts.size), 0.0, 0.0, 0.0, 0.0, True, 0)
+        return FrameTiming(int(ts.size), 0.0, 0.0, 0.0, 0.0, True, 0, None)
     d = np.diff(ts)
     med = float(np.median(d))
     span = float(ts[-1] - ts[0])
+    interval = 1.0 / nominal_fps if nominal_fps else med
+    missing = max(0, round(span * nominal_fps) + 1 - int(ts.size)) if nominal_fps else None
     return FrameTiming(int(ts.size), span, (ts.size - 1) / span if span > 0 else 0.0, med,
-                       float(d.max()), bool((d > 0).all()), int((d > drop_factor * med).sum()))
+                       float(d.max()), bool((d > 0).all()), int((d > gap_factor * interval).sum()), missing)

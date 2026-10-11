@@ -36,10 +36,11 @@ def main(argv=None) -> int:
             if video.is_camera and t - ts[0] >= args.seconds:
                 break
 
-    s = frame_timing(ts)
+    s = frame_timing(ts, nominal_fps=video.fps or None)
     print(f"frames={s.n_frames}  span={s.span_s:.3f}s  measured fps={s.measured_fps:.2f}  "
           f"median interval={s.median_interval_s * 1000:.1f}ms  max gap={s.max_gap_s * 1000:.1f}ms")
-    print(f"monotonic={s.monotonic}  dropped (gap > 1.5x median)={s.dropped}")
+    print(f"monotonic={s.monotonic}  long gaps (> 1.5x frame interval)={s.long_gaps}  "
+          f"missing frames={s.missing}")
     ok = s.monotonic and s.n_frames > 1
     if not video.is_camera:
         end = ts[-1] + 1.0 / video.fps if ts else 0.0

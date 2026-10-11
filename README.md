@@ -40,6 +40,13 @@ python src/main.py --source 0 --show                                   # webcam 
 python src/main.py --source data/videos/two_person_overlap.mp4 --show  # test clip
 ```
 
+Check a video source (monotonic timestamps, real FPS, dropped frames):
+
+```
+python tools/check_capture.py --source data/videos/two_person_overlap.mp4
+python tools/check_capture.py --source 0 --seconds 60
+```
+
 In VS Code, open **this folder** (`speaker-agent/`) as the workspace, select the `.venv`
 interpreter, and press F5 to use the "Run on clip" or "Run on webcam" launch configs.
 

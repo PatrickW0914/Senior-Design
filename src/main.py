@@ -18,7 +18,7 @@ import cv2
 
 import overlay
 from av_event_log import FaceObs, SessionClock, _json_default
-from capture import open_source
+from capture import VideoSource
 from config import DEFAULT_CONFIG, load_config, repo_path
 from detect import FaceDetector
 from geometry import pixel_to_azimuth
@@ -54,8 +54,8 @@ def run(source: int | str, args: argparse.Namespace, cfg: dict) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / f"{args.out_prefix or cfg['output']['prefix']}_faces.jsonl"
 
-    with open(out_path, "w", encoding="utf-8") as fh:
-        for i, (t, frame) in enumerate(open_source(source, cfg["camera"], clock)):
+    with VideoSource(source, cfg["camera"], clock) as video, open(out_path, "w", encoding="utf-8") as fh:
+        for i, (t, frame) in enumerate(video):
             if args.max_frames is not None and i >= args.max_frames:
                 break
             tracks = tracker.update(detector.detect(frame), frame, t)

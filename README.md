@@ -66,6 +66,7 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `src/speaking.py` | lip-motion speaking score | 8 |
 | `src/av_event_log.py` | audio-visual fusion, voice↔face linking, event log | existing |
 | `src/config.py` | loads `config.yaml` | 1 |
+| `src/cv_env.py` | OpenCV settings applied before `cv2` loads (fast webcam start on Windows) | 2 |
 | `src/main.py` | wires everything together | 1 |
 | `tools/` | labeling tool, mock-audio generator | |
 | `eval/` | evaluation scripts | |
@@ -84,4 +85,6 @@ stages can be built in parallel and audio plugs in later as a new `audio.py`.
   `opencv-python` and `opencv-contrib-python` together, since both provide `cv2`.
 - **Videos and models are not committed** (see `.gitignore`). Put them on the team drive and
   copy them into `data/videos/` and `models/`. Label files in `data/labels/` are committed.
+- **New entry points import `cv_env` before `cv2`**, or the webcam can take minutes to start on
+  Windows. Importing `capture` first also works.
 - Run `pytest` before you push.

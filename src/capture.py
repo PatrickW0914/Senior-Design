@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator
 
+import cv_env  # noqa: F401  (must stay above cv2)
 import cv2
 import numpy as np
 
@@ -24,7 +25,7 @@ from av_event_log import SessionClock
 
 _BACKENDS = {
     "auto": cv2.CAP_ANY,
-    "dshow": cv2.CAP_DSHOW,              # Windows; usually opens faster than MSMF
+    "dshow": cv2.CAP_DSHOW,              # Windows; ~10 fps at 720p
     "msmf": cv2.CAP_MSMF,                # Windows
     "v4l2": cv2.CAP_V4L2,                # Linux
     "avfoundation": cv2.CAP_AVFOUNDATION,  # macOS

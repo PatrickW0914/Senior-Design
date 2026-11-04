@@ -14,6 +14,7 @@ import sys
 from dataclasses import asdict
 from pathlib import Path
 
+import cv_env  # noqa: F401  (must stay above cv2)
 import cv2
 
 import overlay

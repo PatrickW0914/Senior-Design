@@ -1,11 +1,36 @@
 """Smoke tests: the environment is installed correctly and the entry point runs."""
 
+import os
 import subprocess
 import sys
+
+import pytest
 
 from av_event_log import FaceObs, _demo
 from config import REPO_ROOT, load_config
 from main import parse_source
+
+# Prints the variable's value at the moment Python starts loading cv2, then imports the entry point.
+CV2_ENV_SPY = """
+import importlib.abc, os, sys
+class Spy(importlib.abc.MetaPathFinder):
+    def find_spec(self, name, path=None, target=None):
+        if name == "cv2":
+            print(os.environ.get("OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"))
+sys.meta_path.insert(0, Spy())
+sys.path[:0] = [{src!r}, {tools!r}]
+import {module}
+"""
+
+
+@pytest.mark.parametrize("module", ["main", "capture", "check_capture"])
+def test_cv_env_is_set_before_cv2_loads(module):
+    """Set any later and it has no effect: the webcam goes back to taking minutes to open."""
+    env = {k: v for k, v in os.environ.items() if k != "OPENCV_VIDEOIO_MSMF_ENABLE_HW_TRANSFORMS"}
+    code = CV2_ENV_SPY.format(src=str(REPO_ROOT / "src"), tools=str(REPO_ROOT / "tools"), module=module)
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, env=env)
+    assert r.returncode == 0, r.stderr
+    assert r.stdout.split()[0] == "0"
 
 
 def test_main_help():

@@ -25,8 +25,13 @@ detect:                    # Task 4. Model files: python tools/get_models.py
   mediapipe:
     model_path: models/blaze_face_short_range.tflite
 
-track:                     # Tasks 5, 12
-  max_lost_frames: 30      # frames a track survives without a detection
+track:                     # Task 5: ByteTrack via supervision. Task 12: re-ID
+  max_lost_s: 2.0          # a track keeps its ID this long without a detection (occlusion, missed frames)
+  lost_velocity_decay: 0.8 # per frame while lost; 1.0 = keep extrapolating the last velocity, 0 = stay put
+  reacquire_radius_h: 1.5  # a new track this many face heights from where an ID vanished (< max_lost_s ago) takes it over; 0 = off
+  activation_threshold: 0.5  # detector score needed to start a track
+  match_threshold: 0.8     # ByteTrack matching threshold on 1 - IoU; lower is stricter
+  min_consecutive_frames: 1  # detections needed before a new track is reported (1 = second frame)
   reid:
     enabled: false
     model: buffalo_l       # insightface model pack

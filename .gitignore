@@ -6,6 +6,7 @@ __pycache__/
 
 # Generated output
 output/
+eval/results/*.mp4
 *_events.jsonl
 *_transcript.json
 *_transcript.txt

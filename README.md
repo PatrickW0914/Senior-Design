@@ -26,6 +26,12 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+Fetch the model files (into `models/`, which git ignores; about 20 MB, or 630 MB with `--all`):
+
+```
+python tools/get_models.py
+```
+
 Check the install:
 
 ```
@@ -78,8 +84,10 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `src/main.py` | wires everything together | 1 |
 | `tools/label.py` | labeling tool: who speaks when | 3 |
 | `tools/check_capture.py` | video-source check: timestamps, fps, dropped frames | 2 |
+| `tools/get_models.py` | downloads the model files `config.yaml` names | 4 |
 | `tools/` | (later) mock-audio generator | |
-| `eval/` | evaluation scripts | |
+| `eval/detect_rate.py` | detection rate, face sizes and speed per clip and backend | 4 |
+| `eval/` | evaluation scripts; results go in `eval/results/` | |
 | `tests/` | pytest unit tests | |
 | `data/videos/`, `data/labels/` | test clips and their labels; `data/README.md` lists them | 3 |
 | `models/` | downloaded model files (paths set in `config.yaml`) | |

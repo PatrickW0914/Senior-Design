@@ -14,10 +14,16 @@ camera:
   hfov_deg: 78.0           # horizontal field of view; measure it for your camera (Task 6)
   latency_s: 0.0           # capture latency from a clap test; fed to SessionClock
 
-detect:                    # Task 4
-  backend: mediapipe
-  model_path: models/blaze_face_short_range.tflite
+detect:                    # Task 4. Model files: python tools/get_models.py
+  backend: scrfd           # scrfd: ~15 ms/frame, finds the faces | mediapipe: ~2 ms, misses about half at room scale
+  width: 960               # detect on the frame downscaled to this width; boxes are mapped back to full size
   min_confidence: 0.5
+  scrfd:
+    pack: buffalo_sc       # buffalo_sc = det_500m (~15 ms) | buffalo_l = det_10g (~95 ms, same recall on our clips)
+    det_size: 640          # network input size; 480 halves the time and loses ~3% of faces
+    root: models/insightface
+  mediapipe:
+    model_path: models/blaze_face_short_range.tflite
 
 track:                     # Tasks 5, 12
   max_lost_frames: 30      # frames a track survives without a detection

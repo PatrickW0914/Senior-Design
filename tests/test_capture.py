@@ -40,6 +40,21 @@ def test_file_runs_are_identical(clip):
     assert [t for t, _ in read_all(str(clip))[1]] == [t for t, _ in read_all(str(clip))[1]]
 
 
+def test_seek_restarts_timestamps_at_that_frame(clip):
+    sequential = [f for _, f in read_all(str(clip))[1]]
+    with VideoSource(str(clip), load_config()["camera"], SessionClock()) as video:
+        video.seek(20)
+        t, frame = next(iter(video))
+        assert t == pytest.approx(20 / FPS)
+        assert np.array_equal(frame, sequential[20])            # same picture as reading straight through
+        assert not np.array_equal(frame, sequential[19])        # (neighbours differ, so this catches off-by-one)
+        assert [t for t, _ in video][0] == pytest.approx(21 / FPS)
+        video.seek(10 ** 6)                                     # clamped to the last frame
+        assert next(iter(video))[0] == pytest.approx((N - 1) / FPS)
+        video.seek(-5)
+        assert next(iter(video))[0] == 0.0
+
+
 def test_missing_file_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
         VideoSource(str(tmp_path / "nope.mp4"), load_config()["camera"], SessionClock())

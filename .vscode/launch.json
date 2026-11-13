@@ -8,6 +8,10 @@
     {"name": "Run on webcam", "type": "debugpy", "request": "launch",
      "program": "${workspaceFolder}/src/main.py",
      "args": ["--source", "0", "--show"],
+     "cwd": "${workspaceFolder}", "console": "integratedTerminal"},
+    {"name": "Label clip", "type": "debugpy", "request": "launch",
+     "program": "${workspaceFolder}/tools/label.py",
+     "args": ["--source", "data/videos/two_person_overlap.mp4"],
      "cwd": "${workspaceFolder}", "console": "integratedTerminal"}
   ]
 }

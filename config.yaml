@@ -11,7 +11,9 @@ camera:
   width: 1280
   height: 720
   fps: 30
-  hfov_deg: 78.0           # horizontal field of view; measure it for your camera (Task 6)
+  hfov_deg: 70.4           # horizontal field of view, used when there is no calibration file.
+                           # C920: the advertised 78 deg is diagonal; at 16:9 that is 70.4 horizontal
+  calibration: ""          # data/calibration/<file>.yaml from tools/calibrate.py; overrides hfov_deg
   latency_s: 0.0           # capture latency from a clap test; fed to SessionClock
 
 detect:                    # Task 4. Model files: python tools/get_models.py

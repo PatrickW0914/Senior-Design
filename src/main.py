@@ -22,7 +22,7 @@ from av_event_log import FaceObs, SessionClock, _json_default
 from capture import VideoSource
 from config import DEFAULT_CONFIG, load_config, repo_path
 from detect import FaceDetector
-from geometry import pixel_to_azimuth
+from geometry import AzimuthModel
 from speaking import SpeakingScorer
 from track import FaceTracker
 
@@ -48,7 +48,6 @@ def run(source: int | str, args: argparse.Namespace, cfg: dict) -> Path:
     clock = SessionClock(camera_latency_s=cfg["camera"]["latency_s"])
     detector = FaceDetector(cfg["detect"])
     scorer = SpeakingScorer(cfg["speaking"])
-    hfov = cfg["camera"]["hfov_deg"]
 
     out_dir = repo_path(cfg["output"]["dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -56,11 +55,12 @@ def run(source: int | str, args: argparse.Namespace, cfg: dict) -> Path:
 
     with VideoSource(source, cfg["camera"], clock) as video, open(out_path, "w", encoding="utf-8") as fh:
         tracker = FaceTracker(cfg["track"], fps=video.fps or cfg["camera"]["fps"])
+        angles = AzimuthModel.from_config(cfg["camera"], video.width, video.height)
         for i, (t, frame) in enumerate(video):
             if args.max_frames is not None and i >= args.max_frames:
                 break
             tracks = tracker.update(detector.detect(frame), frame, t)
-            faces = [FaceObs(trk.track_id, pixel_to_azimuth(trk.cx, frame.shape[1], hfov),
+            faces = [FaceObs(trk.track_id, angles.azimuth(trk.cx, trk.cy),
                              scorer.score(trk, frame, t), trk.bbox) for trk in tracks]
             fh.write(json.dumps({"t": round(t, 3), "faces": [asdict(f) for f in faces]},
                                 default=_json_default) + "\n")

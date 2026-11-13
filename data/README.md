@@ -1,7 +1,9 @@
-# Test clips and labels
+# Test clips, labels and calibration
 
 Clips live in `data/videos/` and are **not committed** (share them through the team drive).
-Their labels live in `data/labels/<clip>.csv` and **are committed**.
+Their labels live in `data/labels/<clip>.csv` and **are committed**, as are the camera
+calibration files `tools/calibrate.py` writes to `data/calibration/` (one per camera and
+resolution; `config.yaml` `camera.calibration` names the one in use).
 
 ## Naming
 

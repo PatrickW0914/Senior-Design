@@ -39,6 +39,17 @@ python src/main.py --help
 pytest
 ```
 
+Calibrate the camera once (gives the focal length the face angles are computed from; without it
+`camera.hfov_deg` is used):
+
+```
+python tools/calibrate.py --print-board board.png      # print at 100%, measure one square
+python tools/calibrate.py --source 0 --square-mm 24.5  # wave the board around until 20 views are in
+```
+
+Then set `camera.calibration` in `config.yaml` to the file it wrote, and check it against tape
+marks on the floor with `python tools/check_azimuth.py --source 0 --marks -30 0 30`.
+
 ## Running
 
 ```
@@ -85,12 +96,15 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `tools/label.py` | labeling tool: who speaks when | 3 |
 | `tools/check_capture.py` | video-source check: timestamps, fps, dropped frames | 2 |
 | `tools/get_models.py` | downloads the model files `config.yaml` names | 4 |
+| `tools/calibrate.py` | checkerboard camera calibration -> `data/calibration/*.yaml` | 6 |
+| `tools/check_azimuth.py` | floor test: face azimuth vs tape marks at known angles | 6 |
 | `tools/` | (later) mock-audio generator | |
 | `eval/detect_rate.py` | detection rate, face sizes and speed per clip and backend | 4 |
 | `eval/track_ids.py` | track IDs per clip: switches, gaps bridged, occlusion survival; `--video` to eyeball | 5 |
 | `eval/` | evaluation scripts; results go in `eval/results/` | |
 | `tests/` | pytest unit tests | |
 | `data/videos/`, `data/labels/` | test clips and their labels; `data/README.md` lists them | 3 |
+| `data/calibration/` | camera calibration files (committed; one per camera and resolution) | 6 |
 | `models/` | downloaded model files (paths set in `config.yaml`) | |
 
 Each `src/` stub states its contract (inputs and outputs) in its docstring. Keep to it so

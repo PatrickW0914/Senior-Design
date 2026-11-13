@@ -48,6 +48,10 @@ class Track:
         return 0.5 * (self.bbox[0] + self.bbox[2])
 
     @property
+    def cy(self) -> float:
+        return 0.5 * (self.bbox[1] + self.bbox[3])
+
+    @property
     def height(self) -> float:
         return self.bbox[3] - self.bbox[1]
 

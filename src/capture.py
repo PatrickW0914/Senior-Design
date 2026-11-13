@@ -59,20 +59,32 @@ class VideoSource:
         self.width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.frame_count = None if self.is_camera else int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self._next_index = 0
 
     @property
     def duration_s(self) -> float | None:
         """File length in seconds (from the container header); None for cameras."""
         return None if self.is_camera else self.frame_count / self.fps
 
+    def seek(self, frame_index: int) -> None:
+        """Files only: the next frame yielded is frame_index, at t = frame_index / fps.
+
+        Call iter() again afterwards if the previous iterator has reached the end of the file.
+        """
+        if self.is_camera:
+            raise RuntimeError("cannot seek a camera")
+        frame_index = min(max(frame_index, 0), self.frame_count - 1)
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+        self._next_index = frame_index
+
     def __iter__(self) -> Iterator[tuple[float, np.ndarray]]:
-        i = 0
         while self.cap.grab():
+            i = self._next_index
             t = self.clock.video_ts(time.perf_counter()) if self.is_camera else i / self.fps
             ok, frame = self.cap.retrieve()
             if not ok:
                 return
-            i += 1
+            self._next_index = i + 1
             yield t, frame
 
     def close(self) -> None:

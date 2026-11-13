@@ -47,8 +47,15 @@ python tools/check_capture.py --source data/videos/two_person_overlap.mp4
 python tools/check_capture.py --source 0 --seconds 60
 ```
 
+Label who is speaking in a clip (keys are listed in the window; see `data/README.md` for the
+labeling rules and the clip list):
+
+```
+python tools/label.py --source data/videos/two_person_overlap.mp4
+```
+
 In VS Code, open **this folder** (`speaker-agent/`) as the workspace, select the `.venv`
-interpreter, and press F5 to use the "Run on clip" or "Run on webcam" launch configs.
+interpreter, and press F5 to use the "Run on clip", "Run on webcam" or "Label clip" launch configs.
 
 Output: `output/<prefix>_faces.jsonl`, one line per frame:
 `{"t": 1.234, "faces": [{"track_id": 1, "azimuth_deg": -12.3, "asd_prob": 0.81, "bbox": [x1, y1, x2, y2]}]}`
@@ -67,11 +74,14 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `src/av_event_log.py` | audio-visual fusion, voice↔face linking, event log | existing |
 | `src/config.py` | loads `config.yaml` | 1 |
 | `src/cv_env.py` | OpenCV settings applied before `cv2` loads (fast webcam start on Windows) | 2 |
+| `src/labels.py` | speaking-label segments and their CSV format | 3 |
 | `src/main.py` | wires everything together | 1 |
-| `tools/` | labeling tool, mock-audio generator | |
+| `tools/label.py` | labeling tool: who speaks when | 3 |
+| `tools/check_capture.py` | video-source check: timestamps, fps, dropped frames | 2 |
+| `tools/` | (later) mock-audio generator | |
 | `eval/` | evaluation scripts | |
 | `tests/` | pytest unit tests | |
-| `data/videos/`, `data/labels/` | test clips and their labels | |
+| `data/videos/`, `data/labels/` | test clips and their labels; `data/README.md` lists them | 3 |
 | `models/` | downloaded model files (paths set in `config.yaml`) | |
 
 Each `src/` stub states its contract (inputs and outputs) in its docstring. Keep to it so

@@ -87,6 +87,7 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `tools/get_models.py` | downloads the model files `config.yaml` names | 4 |
 | `tools/` | (later) mock-audio generator | |
 | `eval/detect_rate.py` | detection rate, face sizes and speed per clip and backend | 4 |
+| `eval/track_ids.py` | track IDs per clip: switches, gaps bridged, occlusion survival; `--video` to eyeball | 5 |
 | `eval/` | evaluation scripts; results go in `eval/results/` | |
 | `tests/` | pytest unit tests | |
 | `data/videos/`, `data/labels/` | test clips and their labels; `data/README.md` lists them | 3 |

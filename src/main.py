@@ -47,7 +47,6 @@ def parse_source(src: int | str) -> int | str:
 def run(source: int | str, args: argparse.Namespace, cfg: dict) -> Path:
     clock = SessionClock(camera_latency_s=cfg["camera"]["latency_s"])
     detector = FaceDetector(cfg["detect"])
-    tracker = FaceTracker(cfg["track"])
     scorer = SpeakingScorer(cfg["speaking"])
     hfov = cfg["camera"]["hfov_deg"]
 
@@ -56,6 +55,7 @@ def run(source: int | str, args: argparse.Namespace, cfg: dict) -> Path:
     out_path = out_dir / f"{args.out_prefix or cfg['output']['prefix']}_faces.jsonl"
 
     with VideoSource(source, cfg["camera"], clock) as video, open(out_path, "w", encoding="utf-8") as fh:
+        tracker = FaceTracker(cfg["track"], fps=video.fps or cfg["camera"]["fps"])
         for i, (t, frame) in enumerate(video):
             if args.max_frames is not None and i >= args.max_frames:
                 break

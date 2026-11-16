@@ -53,6 +53,12 @@ fusion:                    # passed to av_event_log.SpeakingFusion once audio is
   off_threshold: 0.4
   tau_s: 0.25
 
+overlay:                   # Task 7: the debug view (--show) and the saved video (--save-video)
+  width: 1280              # annotated frames are scaled down to this width (never enlarged)
+  graph_seconds: 3.0       # history shown in each face's mouth graph
+  strip_height: 90         # bottom strip reserved for the sound-direction spectrum
+  names: {}                # track id -> name, e.g. {1: Alice, 2: Bob}; re-ID (Task 12) fills this in later
+
 output:
   dir: output
-  prefix: session          # writes <dir>/<prefix>_faces.jsonl
+  prefix: session          # writes <dir>/<prefix>_faces.jsonl, and <prefix>_overlay.mp4 with --save-video

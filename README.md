@@ -55,7 +55,15 @@ marks on the floor with `python tools/check_azimuth.py --source 0 --marks -30 0 
 ```
 python src/main.py --source 0 --show                                   # webcam 0
 python src/main.py --source data/videos/two_person_overlap.mp4 --show  # test clip
+python src/main.py --source data/videos/two_person_overlap.mp4 --save-video   # -> output/session_overlay.mp4
 ```
+
+`--show` opens the debug view and `--save-video [file.mp4]` saves it (both can be used together):
+a box per face with its track ID, name and azimuth, green while that person is speaking; a small
+live graph of each face's mouth-openness; an OVERLAP banner and red frame while two people speak;
+and a strip at the bottom, laid out in camera angle, where the mic array's sound-direction
+spectrum will go. Until the speaking stage (Task 8) exists the boxes stay grey and the header says
+`speaking: n/a`. Names come from `overlay.names` in `config.yaml`.
 
 Check a video source (monotonic timestamps, real FPS, dropped frames):
 
@@ -86,7 +94,7 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `src/detect.py` | face detection | 4 |
 | `src/track.py` | tracking + re-ID | 5, 12 |
 | `src/geometry.py` | pixel → azimuth | 6 |
-| `src/overlay.py` | debug visualization | 7 |
+| `src/overlay.py` | debug view and saved annotated video (`--show`, `--save-video`) | 7 |
 | `src/speaking.py` | lip-motion speaking score | 8 |
 | `src/av_event_log.py` | audio-visual fusion, voice↔face linking, event log | existing |
 | `src/config.py` | loads `config.yaml` | 1 |

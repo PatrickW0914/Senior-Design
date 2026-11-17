@@ -62,8 +62,20 @@ python src/main.py --source data/videos/two_person_overlap.mp4 --save-video   # 
 a box per face with its track ID, name and azimuth, green while that person is speaking; a small
 live graph of each face's mouth-openness; an OVERLAP banner and red frame while two people speak;
 and a strip at the bottom, laid out in camera angle, where the mic array's sound-direction
-spectrum will go. Until the speaking stage (Task 8) exists the boxes stay grey and the header says
-`speaking: n/a`. Names come from `overlay.names` in `config.yaml`.
+spectrum will go. Names come from `overlay.names` in `config.yaml`.
+
+"Speaking" is judged from lip motion alone for now (`src/speaking.py`): how much the
+mouth-opening ratio fluctuates over the last 0.75 s. It cannot tell talking from chewing or
+mouthing words; the microphones settle that later. To measure it against labels and retune:
+
+```
+python eval/speaking_accuracy.py --extract   # slow, once: caches mouth ratios in output/speaking/
+python eval/speaking_accuracy.py             # fast: accuracy per clip -> eval/results/speaking.md
+python eval/speaking_accuracy.py --tune      # compare methods, windows, thresholds
+```
+
+`eval/speaking_threshold.ipynb` plots the score against the truth for one clip (open it in
+VS Code with the `.venv` interpreter).
 
 Check a video source (monotonic timestamps, real FPS, dropped frames):
 
@@ -104,15 +116,19 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `tools/label.py` | labeling tool: who speaks when | 3 |
 | `tools/check_capture.py` | video-source check: timestamps, fps, dropped frames | 2 |
 | `tools/get_models.py` | downloads the model files `config.yaml` names | 4 |
+| `tools/import_dataset.py` | converts public datasets (AMI, AVA-ActiveSpeaker, RealVAD) into clips + labels; see `data/README.md` | 3, 8 |
 | `tools/calibrate.py` | checkerboard camera calibration -> `data/calibration/*.yaml` | 6 |
 | `tools/check_azimuth.py` | floor test: face azimuth vs tape marks at known angles | 6 |
 | `tools/` | (later) mock-audio generator | |
 | `eval/detect_rate.py` | detection rate, face sizes and speed per clip and backend | 4 |
 | `eval/track_ids.py` | track IDs per clip: switches, gaps bridged, occlusion survival; `--video` to eyeball | 5 |
+| `eval/speaking_accuracy.py` | speaking score vs labels (or audio): accuracy, precision, recall, tuning | 8 |
+| `eval/speaking_threshold.ipynb` | plots score vs truth for one clip, to pick the threshold | 8 |
 | `eval/` | evaluation scripts; results go in `eval/results/` | |
 | `tests/` | pytest unit tests | |
 | `data/videos/`, `data/labels/` | test clips and their labels; `data/README.md` lists them | 3 |
 | `data/calibration/` | camera calibration files (committed; one per camera and resolution) | 6 |
+| `data/audio/`, `data/external/` | multi-channel audio and raw dataset downloads (not committed) | |
 | `models/` | downloaded model files (paths set in `config.yaml`) | |
 
 Each `src/` stub states its contract (inputs and outputs) in its docstring. Keep to it so

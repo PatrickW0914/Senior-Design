@@ -46,11 +46,14 @@ def yellow(b, g, r):
     return (r > 200) & (g > 170) & (b < 90)
 
 
-def test_size_is_frame_plus_strip_scaled_and_never_enlarged():
+def test_size_is_frame_plus_strip_scaled_to_fit():
     ov = Overlay(CFG)
     assert ov.draw(frame(), 0.0, []).shape == (H + STRIP, W, 3)
     assert ov.draw(frame(3840, 2160), 0.0, []).shape == (H + STRIP, W, 3)       # 4K comes down to 1280
-    assert ov.draw(frame(640, 360), 0.0, []).shape == (360 + STRIP, 640, 3)     # small stays small
+    assert ov.draw(frame(640, 360), 0.0, []).shape == (360 + STRIP, 640, 3)     # in between is left alone
+    assert ov.draw(frame(352, 288), 0.0, []).shape == (524 + STRIP, 640, 3)     # tiny is enlarged so labels fit
+    tiny = FaceObs(1, 0.0, 0.9, (100, 100, 200, 220))
+    assert is_green(ov.draw(frame(352, 288), 0.0, [tiny], speaking={1})[250, round(100 * 640 / 352)])
     assert ov.output_size(3840, 2160) == (W, H + STRIP)
 
 
@@ -153,8 +156,31 @@ def test_video_saver_writes_a_playable_mp4(tmp_path):
     cap.release()
 
 
-def test_main_saves_an_overlay_video_without_a_speaking_stage(tmp_path, monkeypatch, capsys):
-    """End to end with a stand-in detector: main runs through although Task 8 is not there."""
+class FakeDetector:
+    def __init__(self, cfg):
+        pass
+
+    def detect(self, frame):
+        return [Detection((100.0, 60.0, 180.0, 160.0), 0.9)]
+
+
+class FakeScorer:
+    """Says the face is speaking, with a mouth value, without any model file."""
+
+    def __init__(self, cfg):
+        self.mouth = {}
+
+    def score(self, track, frame, t):
+        self.mouth[track.track_id] = 0.1
+        return 0.9
+
+
+class NoScorer(FakeScorer):
+    def score(self, track, frame, t):
+        raise NotImplementedError("a speaking stage")
+
+
+def run_main(tmp_path, monkeypatch, scorer):
     clip = tmp_path / "clip.mp4"
     w = cv2.VideoWriter(str(clip), cv2.VideoWriter_fourcc(*"mp4v"), 20, (320, 240))
     for i in range(12):
@@ -165,20 +191,31 @@ def test_main_saves_an_overlay_video_without_a_speaking_stage(tmp_path, monkeypa
     cfg["camera"]["calibration"] = ""
     cfg_path = tmp_path / "config.yaml"
     yaml.safe_dump(cfg, open(cfg_path, "w"))
-
-    class FakeDetector:
-        def __init__(self, cfg):
-            pass
-
-        def detect(self, frame):
-            return [Detection((100.0, 60.0, 180.0, 160.0), 0.9)]
-
     monkeypatch.setattr(main, "FaceDetector", FakeDetector)
+    monkeypatch.setattr(main, "SpeakingScorer", scorer)
     assert main.main(["--config", str(cfg_path), "--source", str(clip), "--save-video", "--out-prefix", "t"]) == 0
     lines = (tmp_path / "out" / "t_faces.jsonl").read_text().splitlines()
-    assert len(lines) == 12 and '"track_id": 1' in lines[-1]
     cap = cv2.VideoCapture(str(tmp_path / "out" / "t_overlay.mp4"))
-    assert int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) == 12
-    assert (int(cap.get(3)), int(cap.get(4))) == (320, 240 + cfg["overlay"]["strip_height"])
+    frames = []
+    while True:
+        ok, f = cap.read()
+        if not ok:
+            break
+        frames.append(f)
     cap.release()
+    assert len(lines) == 12 == len(frames) and '"track_id": 1' in lines[-1]
+    assert frames[0].shape[:2] == (480 + cfg["overlay"]["strip_height"], 640)        # 320x240 enlarged to 640 wide
+    return lines, frames
+
+
+def test_main_saves_an_overlay_video_with_speaking_scores(tmp_path, monkeypatch):
+    lines, frames = run_main(tmp_path, monkeypatch, FakeScorer)
+    assert '"asd_prob": 0.9' in lines[-1]
+    assert is_green(frames[-1][220, 200])                       # left edge of the box (doubled): speaking
+
+
+def test_main_runs_without_a_speaking_stage(tmp_path, monkeypatch, capsys):
+    lines, frames = run_main(tmp_path, monkeypatch, NoScorer)
+    assert '"asd_prob": 0.0' in lines[-1]
+    assert not is_green(frames[-1][220, 200])
     assert "running without speaking scores" in capsys.readouterr().err

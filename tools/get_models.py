@@ -20,15 +20,17 @@ from config import load_config, repo_path  # noqa: E402
 
 MEDIAPIPE_URL = ("https://storage.googleapis.com/mediapipe-models/face_detector/"
                  "blaze_face_short_range/float16/latest/blaze_face_short_range.tflite")
+LANDMARKER_URL = ("https://storage.googleapis.com/mediapipe-models/face_landmarker/"
+                  "face_landmarker/float16/latest/face_landmarker.task")
 
 
-def get_mediapipe(path: Path) -> None:
+def get_mediapipe(path: Path, url: str = MEDIAPIPE_URL) -> None:
     if path.is_file():
         print(f"have     {path}")
         return
     path.parent.mkdir(parents=True, exist_ok=True)
-    print(f"download {MEDIAPIPE_URL}\n      -> {path}")
-    urllib.request.urlretrieve(MEDIAPIPE_URL, path)
+    print(f"download {url}\n      -> {path}")
+    urllib.request.urlretrieve(url, path)
 
 
 def get_insightface_pack(root: Path, pack: str) -> None:
@@ -54,6 +56,7 @@ def main(argv=None) -> int:
     cfg = load_config(args.config)
     det = cfg["detect"]
     get_mediapipe(repo_path(det.get("mediapipe", {}).get("model_path", "models/blaze_face_short_range.tflite")))
+    get_mediapipe(repo_path(cfg.get("speaking", {}).get("model_path", "models/face_landmarker.task")), LANDMARKER_URL)
     scrfd = det.get("scrfd", {})
     root = repo_path(scrfd.get("root", "models/insightface"))
     packs = {scrfd.get("pack", "buffalo_sc")}

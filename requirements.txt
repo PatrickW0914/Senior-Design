@@ -14,5 +14,12 @@ supervision==0.30.9
 insightface==2.1
 onnxruntime==1.31.0     # inference backend for insightface models
 
+# Used directly by tools/ and eval/. mediapipe and insightface already pull these in at these
+# versions; they are listed so a change there cannot silently change them here.
+av==19.0.2              # audio decoding: tools/label.py, eval/speaking_accuracy.py
+sounddevice==0.5.6      # audio playback in tools/label.py
+matplotlib==3.11.2      # plots in eval/speaking_threshold.ipynb
+
 # Dev
 pytest==9.1.1
+ipykernel==7.4.0        # lets VS Code run the notebooks in eval/ with the .venv interpreter

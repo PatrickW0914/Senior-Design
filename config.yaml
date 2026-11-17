@@ -39,10 +39,20 @@ track:                     # Task 5: ByteTrack via supervision. Task 12: re-ID
     model: buffalo_l       # insightface model pack
     similarity_threshold: 0.45
 
-speaking:                  # Task 8: lip-motion score -> FaceObs.asd_prob
+speaking:                  # Task 8: lip motion -> FaceObs.asd_prob. Model file: python tools/get_models.py
   model_path: models/face_landmarker.task
-  window_s: 0.5            # lip-motion history used per score
-  on_threshold: 0.6
+  crop_margin: 0.35        # the landmarker runs on a square around the face, this much wider than its box
+  crop_size: 256           # ... resized to this many pixels (12 ms per face on a laptop CPU)
+  window_s: 0.75           # mouth-ratio history the fluctuation is measured over
+  method: std              # std: deviation around a straight line | band: 2-8 Hz amplitude (no better on our data)
+  threshold: 0.03          # fluctuation at which the probability is 0.5; tuned in eval/results/speaking_notes.md
+  slope: 0.0075            # width of the logistic curve around the threshold (a quarter of it)
+  max_yaw: 1.0             # do not score a face turned further than this (nose offset in eye-distances; ~60 deg)
+  max_gap_s: 0.2           # a score needs landmarks without holes longer than this
+  max_head_motion: null    # optional: no score while yaw/pitch spread over the window exceeds this.
+                           # Off: an animated talker moves as much as someone nodding (see the notes)
+  hold_s: 0.3              # landmarks lost: keep the last probability this long, then 0
+  on_threshold: 0.6        # hysteresis for the on/off speaking state
   off_threshold: 0.4
 
 fusion:                    # passed to av_event_log.SpeakingFusion once audio is added
@@ -54,7 +64,8 @@ fusion:                    # passed to av_event_log.SpeakingFusion once audio is
   tau_s: 0.25
 
 overlay:                   # Task 7: the debug view (--show) and the saved video (--save-video)
-  width: 1280              # annotated frames are scaled down to this width (never enlarged)
+  width: 1280              # annotated frames are scaled down to this width
+  min_width: 640           # ... and small sources are enlarged to this, so the labels fit
   graph_seconds: 3.0       # history shown in each face's mouth graph
   strip_height: 90         # bottom strip reserved for the sound-direction spectrum
   names: {}                # track id -> name, e.g. {1: Alice, 2: Bob}; re-ID (Task 12) fills this in later

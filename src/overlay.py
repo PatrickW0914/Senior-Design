@@ -3,8 +3,8 @@
 Contract
 --------
 Overlay(cfg["overlay"], angles).draw(frame, t, faces, mouth=, speaking=, names=, doa=, note=)
-returns the annotated picture: the frame scaled to overlay.width (never enlarged) with a strip
-added underneath. Its size depends only on the input size, so it can go to a window and to a
+returns the annotated picture: the frame scaled down to overlay.width (or up to overlay.min_width,
+so the labels fit on a small source) with a strip added underneath. Its size depends only on the input size, so it can go to a window and to a
 video file alike. What it draws:
 
   box per face   green while that track is speaking, grey otherwise (or while speaking is unknown)
@@ -44,6 +44,7 @@ class Overlay:
     def __init__(self, cfg: dict | None = None, angles=None):
         cfg = cfg or {}
         self.max_width = int(cfg.get("width", 1280))
+        self.min_width = int(cfg.get("min_width", 640))
         self.graph_s = float(cfg.get("graph_seconds", 3.0))
         self.strip_h = int(cfg.get("strip_height", 90))
         self.names = {int(k): str(v) for k, v in (cfg.get("names") or {}).items()}
@@ -54,6 +55,9 @@ class Overlay:
 
     # --- sizes ----------------------------------------------------------------------------
     def scale_for(self, frame_w: int) -> float:
+        """Shrink a wide frame to max_width; enlarge a small one to min_width so the labels fit."""
+        if frame_w < self.min_width:
+            return self.min_width / frame_w
         return min(1.0, self.max_width / frame_w)
 
     def output_size(self, frame_w: int, frame_h: int) -> tuple[int, int]:
@@ -122,7 +126,7 @@ class Overlay:
         w, h = round(fw * s), round(fh * s)
         k = max(0.6, w / 1280)                                   # size of text and lines
         img = np.zeros((h + self.strip_h, w, 3), np.uint8)
-        img[:h] = cv2.resize(frame, (w, h), interpolation=cv2.INTER_AREA) if s < 1 else frame
+        img[:h] = frame if s == 1 else cv2.resize(frame, (w, h), interpolation=cv2.INTER_AREA if s < 1 else cv2.INTER_LINEAR)
         names = {**self.names, **(names or {})}
         present = {f.track_id for f in faces}
         talking = None if speaking is None else set(speaking) & present

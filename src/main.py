@@ -113,6 +113,9 @@ def main(argv=None) -> int:
     except NotImplementedError as e:
         print(f"Pipeline stage not implemented yet -> {e}", file=sys.stderr)
         return 2
+    except FileNotFoundError as e:          # a model file or the clip is missing: say which, no traceback
+        print(e, file=sys.stderr)
+        return 2
     print(f"Wrote {out_path}")
     return 0
 

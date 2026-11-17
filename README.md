@@ -94,8 +94,17 @@ python tools/label.py --source data/videos/two_person_overlap.mp4
 In VS Code, open **this folder** (`speaker-agent/`) as the workspace, select the `.venv`
 interpreter, and press F5 to use the "Run on clip", "Run on webcam" or "Label clip" launch configs.
 
-Output: `output/<prefix>_faces.jsonl`, one line per frame:
-`{"t": 1.234, "faces": [{"track_id": 1, "azimuth_deg": -12.3, "asd_prob": 0.81, "bbox": [x1, y1, x2, y2]}]}`
+Output, in `output/` (prefix from `--out-prefix` or `output.prefix`):
+
+- `<prefix>_faces.jsonl`, one line per frame:
+  `{"t": 1.234, "faces": [{"track_id": 1, "azimuth_deg": -12.3, "asd_prob": 0.81, "bbox": [x1, y1, x2, y2]}]}`
+- `<prefix>_transcript.json` and `_transcript.txt`: the speaking segments (who, from when to when,
+  at what angle, whether it overlapped someone else). No text yet: that needs the microphones.
+- `<prefix>_events.jsonl`: the live log, one line as each segment closes.
+
+There is no audio yet, so `fusion.mode` in `config.yaml` is `video_only`: who is speaking is
+decided from the faces alone. With the mic array connected it becomes `audio_visual`.
+`python eval/segments_vs_labels.py` compares the segments with the labels.
 
 ## Layout
 
@@ -124,6 +133,7 @@ Output: `output/<prefix>_faces.jsonl`, one line per frame:
 | `eval/track_ids.py` | track IDs per clip: switches, gaps bridged, occlusion survival; `--video` to eyeball | 5 |
 | `eval/speaking_accuracy.py` | speaking score vs labels (or audio): accuracy, precision, recall, tuning | 8 |
 | `eval/speaking_threshold.ipynb` | plots score vs truth for one clip, to pick the threshold | 8 |
+| `eval/segments_vs_labels.py` | speaking segments vs labels: turns found, boundary errors, coverage | 9 |
 | `eval/` | evaluation scripts; results go in `eval/results/` | |
 | `tests/` | pytest unit tests | |
 | `data/videos/`, `data/labels/` | test clips and their labels; `data/README.md` lists them | 3 |

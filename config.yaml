@@ -55,13 +55,20 @@ speaking:                  # Task 8: lip motion -> FaceObs.asd_prob. Model file:
   on_threshold: 0.6        # hysteresis for the on/off speaking state
   off_threshold: 0.4
 
-fusion:                    # passed to av_event_log.SpeakingFusion once audio is added
-  w_asd: 0.5
-  w_doa: 0.4
-  w_vad: 0.1
-  on_threshold: 0.6
-  off_threshold: 0.4
-  tau_s: 0.25
+fusion:                    # av_event_log.SpeakingFusion: per-frame scores -> who is speaking -> segments
+  mode: video_only         # video_only: the face's speaking probability alone (no microphones yet)
+                           # audio_visual: the three weights below; needs audio frames, or nobody is ever marked
+  w_asd: 0.5               # audio_visual weights: face speaking probability,
+  w_doa: 0.4               #   sound arriving from the face's direction,
+  w_vad: 0.1               #   voice activity
+  on_threshold: 0.6        # smoothed score to start speaking ...
+  off_threshold: 0.4       # ... and to stop
+  tau_s: 0.25              # smoothing time constant
+  gap_merge_s: 0.5         # a turn continues through dropouts of the score shorter than this. Larger gives
+                           # fewer pieces per turn but fuses neighbouring turns (eval/results/segments_notes.md)
+  min_duration_s: 0.4      # shorter segments are dropped
+  asd_onset_s: 0.0         # the speaking score turns on this late: segment starts are moved earlier by it
+  asd_release_s: 0.5       # ... and off this late (lip motion looks back 0.75 s): ends are moved earlier by it
 
 overlay:                   # Task 7: the debug view (--show) and the saved video (--save-video)
   width: 1280              # annotated frames are scaled down to this width

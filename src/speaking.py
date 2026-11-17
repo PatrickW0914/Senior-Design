@@ -204,14 +204,23 @@ class SpeakingScorer:
         pose = head_pose(getattr(track, "keypoints", None))
         return (self.mouth_ratio(track, frame), *(pose or (None, None)))
 
+    def _turned(self, yaw: float | None) -> bool:
+        return self.max_yaw is not None and yaw is not None and abs(yaw) > float(self.max_yaw)
+
     def score(self, track: Track, frame: np.ndarray, t: float) -> float:
-        tid = track.track_id
+        yaw, pitch = head_pose(getattr(track, "keypoints", None)) or (None, None)
+        ratio = None if self._turned(yaw) else self.mouth_ratio(track, frame)   # a turned face: do not even look
+        return self.score_from(track.track_id, t, ratio, yaw, pitch)
+
+    def score_from(self, tid: int, t: float, ratio: float | None, yaw: float | None = None,
+                   pitch: float | None = None) -> float:
+        """The scoring that follows the measurement: gates, history, probability. The evaluations call
+        this with cached measurements, so they run the same logic as the live pipeline."""
         motion = self._motion.get(tid)
         if motion is None:
             motion = self._motion[tid] = LipMotion(**self._motion_args)
-        yaw, pitch = head_pose(getattr(track, "keypoints", None)) or (None, None)
-        turned = self.max_yaw is not None and yaw is not None and abs(yaw) > float(self.max_yaw)
-        ratio = None if turned else self.mouth_ratio(track, frame)     # a turned face: do not even look
+        if self._turned(yaw):
+            ratio = None
         if ratio is None:
             prob = motion.hold(t)
             self.mouth.pop(tid, None)

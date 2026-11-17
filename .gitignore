@@ -13,6 +13,12 @@ eval/results/**/*.mp4
 *_faces.jsonl
 
 # Large binaries: share through the team drive, not git
+data/external/
+data/audio/*
+!data/audio/.gitkeep
+data/labels/ami_*
+data/labels/ava_*
+data/labels/realvad_*
 data/videos/*
 !data/videos/.gitkeep
 models/*

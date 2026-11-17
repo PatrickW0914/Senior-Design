@@ -48,6 +48,12 @@ Press `1` when person 1 starts speaking and again when they stop; same for `2`. 
 in the window. The CSV has one row per speaking segment: `t_start,t_end,person`, in seconds of
 clip time (frame index / fps), so it lines up with `output/*_faces.jsonl` from `main.py`.
 
+A label file with only the header line means "nobody speaks in this clip".
+`one_person_nodding_silent.csv` is one: the clip was recorded as nodding without speaking, so it
+is the known-negative test for the speaking score. No other clip is labeled yet; until they
+are, `eval/speaking_accuracy.py` can only score the podcast clips against their audio, which
+says that someone is speaking but not who.
+
 Rules (proposed; settle them after two people label the same clip and compare):
 
 - **Person numbers:** person 1 is the leftmost face in the first frame where everyone is visible.
@@ -58,3 +64,39 @@ Rules (proposed; settle them after two people label the same clip and compare):
 - **Backchannels** ("mm-hm", laughs) count as speaking only if they last 0.3 s or more.
 - **Agreement check:** two people label the same clip without looking at each other's CSV. If
   boundaries differ by more than 0.3 s, tighten these rules before labeling the rest.
+
+## Public datasets
+
+`tools/import_dataset.py` brings three public datasets into this layout. Raw downloads stay in
+`data/external/` (not committed); the clips land in `data/videos/` with a dataset prefix and their
+truth in `data/labels/`. Unlike our own clips these are licensed for reuse with attribution, so
+footage from them can appear in a report or demo.
+
+| Dataset | Command | You get | Good for |
+|---|---|---|---|
+| **AMI Meeting Corpus** (CC BY 4.0) | `python tools/import_dataset.py ami --meeting ES2008a --download --audio` | `ami_<meeting>_closeup1..4.mp4`, one participant each (352x288, 25 fps), with a label file of when that person speaks, from the manual transcript's word timings; `data/audio/ami_<meeting>_array1.wav`, the 8 channels of the table's circular microphone array (10 cm radius, 16 kHz), and `_mix.wav` | Lip-motion accuracy against human transcripts, and later the audio stage: direction of arrival on a real array with known speaker times |
+| **AVA-ActiveSpeaker** (labels CC BY 4.0; films from YouTube, mirrored for research) | `python tools/import_dataset.py ava --id 053oq2xB3oU --download --duration 120` | `ava_<id>_<start>s.mp4` and `<clip>.faces.csv`: a box and speaking flag per labeled face per frame | Lip-motion accuracy on varied faces. It is film footage: many faces, a cut every few seconds, so tracks are short |
+| **RealVAD** (CC BY 4.0) | `python tools/import_dataset.py realvad --video <file>` | `realvad_panel.mp4` and `.faces.csv`: an upper-body box and speaking flag for each of nine panelists | A fixed camera on seated people, closest to our setup. The video is **not** in the dataset: download `www.youtube.com/watch?v=51pRTOIso4U` yourself. Not yet tested on the real video; check the image the tool writes |
+
+Things to know:
+
+- **Label forms.** AMI close-ups use the same `t_start,t_end,person` file as our own clips. AVA
+  and RealVAD use `<clip>.faces.csv` (a box per person per frame), because faces move and shots
+  change; a tracked face takes the truth of the labeled box it falls in.
+- **AMI close-ups are only "one person" while people sit.** Participants walk to the whiteboard,
+  someone else can enter the shot, and seats go empty. The evaluation ignores faces far from
+  the seat, but early minutes of a meeting are cleanest. Participants wear headset microphones
+  that partly cover the mouth corner.
+- **AMI wide views** (`--views corner overhead`) are fisheye overviews with faces about 10 px
+  tall: no use for lip reading. Their label file numbers the four speakers A-D as persons 1-4,
+  which is not left-to-right order.
+- **AMI speech stretches** join words less than 0.5 s apart, the same rule as our own labeling.
+  Laughs and coughs in the transcript are not counted as speech.
+- **AVA's `speaking`** is true for both `SPEAKING_AUDIBLE` and `SPEAKING_NOT_AUDIBLE`: either way
+  the lips move, which is what the visual detector is judged on.
+- **RealVAD's readme is wrong about its box format**: it says `x, y, width, height`, but the
+  numbers only make sense as two corners `x1, y1, x2, y2` in a 1280x720 frame, which is how the
+  converter reads them.
+- **EasyCom** was considered and left out: 70 GB as one archive, a head-mounted moving camera,
+  and restaurant noise.
+- Clips are re-encoded without sound. For AMI use the files in `data/audio/`.

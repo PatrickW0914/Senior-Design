@@ -27,6 +27,15 @@ Key ideas
   is lost (turned to the slides), and transcript words carrying a voice label are
   attributed to the right person.
 
+Video-only mode
+---------------
+Until the microphones are connected there are no audio frames, and with the default weights
+(w_asd 0.5, w_doa 0.4, w_vad 0.1) a face's score cannot rise above 0.5, below the 0.6 needed
+to start speaking: nobody would ever be marked. AVSpeakerPipeline(..., video_only=True), or
+fusion_kwargs=VIDEO_ONLY_WEIGHTS, makes the score the face's speaking probability alone, so
+the segment builder, overlap flag and event log work today. Segments then have no text and
+there are no off-camera or voice events. When audio arrives, drop the flag.
+
 Outputs (prefix configurable)
 -----------------------------
   <prefix>_events.jsonl      live log: session_start, segment, link, session_end
@@ -66,6 +75,7 @@ import json
 import math
 import threading
 import time
+import warnings
 from collections import defaultdict, deque
 from dataclasses import asdict, dataclass
 
@@ -73,6 +83,7 @@ import numpy as np
 from scipy.optimize import linear_sum_assignment
 
 OFF_CAMERA = -1  # pseudo track id for a voice with no visible face at its direction
+VIDEO_ONLY_WEIGHTS = dict(w_asd=1.0, w_doa=0.0, w_vad=0.0)   # fusion on the face's speaking probability alone
 
 
 # ---------------------------------------------------------------------------
@@ -247,7 +258,12 @@ class AudioBuffer:
 # Per-frame audio-visual fusion
 # ---------------------------------------------------------------------------
 class SpeakingFusion:
-    """score = w_asd*ASD + w_doa*P(theta_face)*VAD + w_vad*VAD, smoothed with hysteresis."""
+    """score = w_asd*ASD + w_doa*P(theta_face)*VAD + w_vad*VAD, smoothed with hysteresis.
+
+    Without audio the last two terms are zero, so the score tops out at w_asd. If that is below
+    on_threshold (it is with the default weights) no face can ever start speaking; the fusion
+    warns once when it sees that happening. Use VIDEO_ONLY_WEIGHTS until audio is connected.
+    """
 
     def __init__(self, audio: AudioBuffer, w_asd=0.5, w_doa=0.4, w_vad=0.1,
                  on_threshold=0.6, off_threshold=0.4, tau_s=0.25, audio_window_s=0.2,
@@ -264,6 +280,26 @@ class SpeakingFusion:
         self.forget_after_s = forget_after_s
         self._state: dict[int, tuple[float, bool, float]] = {}  # track -> (score, on, last_t)
         self._last_t: float | None = None
+        self._audio_seen = False
+        self._first_t: float | None = None
+        self._warned = False
+
+    @property
+    def video_only(self) -> bool:
+        return self.w_doa == 0 and self.w_vad == 0
+
+    def _check_audio(self, t: float, have_audio: bool) -> None:
+        """Warn once if two seconds of video pass with no audio and weights that need it."""
+        self._audio_seen = self._audio_seen or have_audio
+        if self._first_t is None:
+            self._first_t = t
+        if (not self._warned and not self._audio_seen and t - self._first_t > 2.0
+                and self.w_asd < self.on_threshold):
+            self._warned = True
+            warnings.warn(f"SpeakingFusion has received no audio frames: scores are capped at w_asd={self.w_asd}, "
+                          f"below on_threshold={self.on_threshold}, so nobody can be marked speaking. "
+                          "Use video-only weights (AVSpeakerPipeline(video_only=True)) until audio is connected.",
+                          RuntimeWarning, stacklevel=3)
 
     def _audio_profile(self, t):
         frames = self.audio.window(t, self.audio_window_s)
@@ -288,6 +324,7 @@ class SpeakingFusion:
 
     def update(self, t: float, faces: list[FaceObs]) -> FrameResult:
         P, vad, ov = self._audio_profile(t)
+        self._check_audio(t, P is not None)
         dt = 0.04 if self._last_t is None else max(1e-3, t - self._last_t)
         self._last_t = t
         alpha = 1.0 - math.exp(-dt / self.tau_s)
@@ -321,9 +358,21 @@ class SpeakingFusion:
 # Frame flags -> speaking segments
 # ---------------------------------------------------------------------------
 class SegmentBuilder:
-    def __init__(self, gap_merge_s: float = 0.5, min_duration_s: float = 0.4):
+    """Runs of "speaking" frames per track -> segments.
+
+    A speaking score that looks back over a window (lip motion over the last 0.75 s, say) turns
+    on a little late and off later still. onset_latency_s is subtracted from each segment's start
+    and release_latency_s from its end, which puts the segment back where the speech was; a
+    segment shorter than min_duration_s after that is dropped. gap_merge_s bridges short dropouts
+    of the score inside one turn.
+    """
+
+    def __init__(self, gap_merge_s: float = 0.5, min_duration_s: float = 0.4,
+                 onset_latency_s: float = 0.0, release_latency_s: float = 0.0):
         self.gap_merge_s = gap_merge_s
         self.min_duration_s = min_duration_s
+        self.onset_latency_s = onset_latency_s
+        self.release_latency_s = release_latency_s
         self._open: dict[int, dict] = {}
         self._next_id = 1
 
@@ -351,10 +400,12 @@ class SegmentBuilder:
 
     def _close(self, k) -> Segment | None:
         o = self._open.pop(k)
-        if o["last"] - o["t_start"] < self.min_duration_s:
+        start = max(0.0, o["t_start"] - self.onset_latency_s)
+        end = o["last"] - self.release_latency_s
+        if end - start < self.min_duration_s:
             return None
-        seg = Segment(self._next_id, k, o["t_start"], o["last"], float(np.mean(o["az"])),
-                      float(np.mean(o["sc"])), o["ov"] / o["n"] > 0.3,
+        seg = Segment(self._next_id, k, start, end,
+                      float(np.mean(o["az"])), float(np.mean(o["sc"])), o["ov"] / o["n"] > 0.3,
                       source="doa" if k == OFF_CAMERA else "av")
         self._next_id += 1
         return seg
@@ -637,16 +688,20 @@ class AVSpeakerPipeline:
 
     def __init__(self, doa_grid_deg, out_prefix: str = "session", names: dict[int, str] | None = None,
                  fusion_kwargs: dict | None = None, linker_kwargs: dict | None = None,
-                 segment_kwargs: dict | None = None):
+                 segment_kwargs: dict | None = None, video_only: bool = False):
+        """video_only=True fuses on the faces' speaking probability alone (see the module docstring);
+        it overrides any w_asd / w_doa / w_vad in fusion_kwargs."""
         self.out_prefix = out_prefix
         self.audio = AudioBuffer(doa_grid_deg)
-        self.fusion = SpeakingFusion(self.audio, **(fusion_kwargs or {}))
+        fusion_kwargs = {**(fusion_kwargs or {}), **(VIDEO_ONLY_WEIGHTS if video_only else {})}
+        self.fusion = SpeakingFusion(self.audio, **fusion_kwargs)
         self.builder = SegmentBuilder(**(segment_kwargs or {}))
         self.linker = VoiceFaceLinker(**(linker_kwargs or {}))
         self.log = EventLog(f"{out_prefix}_events.jsonl", names)
         self._lock = threading.Lock()
         self._last_t: float | None = None
-        self.log.write("session_start", 0.0, wall_clock=time.strftime("%Y-%m-%d %H:%M:%S"))
+        self.log.write("session_start", 0.0, wall_clock=time.strftime("%Y-%m-%d %H:%M:%S"),
+                       mode="video_only" if self.fusion.video_only else "audio_visual")
 
     def on_audio_frame(self, frame: AudioFrame) -> None:
         self.audio.push(frame)  # AudioBuffer has its own lock; keep audio callbacks fast
@@ -678,7 +733,7 @@ class AVSpeakerPipeline:
             for seg in self.builder.flush():
                 self.log.add_segment(seg, self.linker)
             self.log.log_link_changes(self.linker.process_pending(force=True), self._last_t or 0.0)
-            return self.log.finalize(self.linker, self.out_prefix)
+            return self.log.finalize(self.linker, self.out_prefix, gap_merge_s=self.builder.gap_merge_s)
 
 
 # ---------------------------------------------------------------------------
